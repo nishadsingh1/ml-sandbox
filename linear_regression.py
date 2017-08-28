@@ -4,6 +4,7 @@ from utils import *
 
 DEFAULT_REG = 2
 
+
 class LinearRegressionModel(Model):
     def __init__(self):
         self.model = None
@@ -23,7 +24,7 @@ class LinearRegressionModel(Model):
 
     def predict(self, data):
         result = np.dot(data, self.model)
-        length = len(result);
+        length = len(result)
         y = np.zeros(length)
         for i in range(length):
             y[i] = np.argmax(result[i])

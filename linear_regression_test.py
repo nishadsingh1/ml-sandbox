@@ -13,5 +13,7 @@ if __name__ == "__main__":
     pred_labels_train = model.predict(X_train)
     pred_labels_test = model.predict(X_test)
 
-    print("Train accuracy: {0}".format(metrics.accuracy_score(labels_train, pred_labels_train)))
-    print("Test accuracy: {0}".format(metrics.accuracy_score(labels_test, pred_labels_test)))
+    print("Train accuracy: {0}".format(
+        metrics.accuracy_score(labels_train, pred_labels_train)))
+    print("Test accuracy: {0}".format(
+        metrics.accuracy_score(labels_test, pred_labels_test)))
