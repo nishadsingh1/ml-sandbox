@@ -35,7 +35,8 @@ class RandomForest(Model):
             data_for_tree, labels_for_tree = data[
                 subset_of_data_indices], labels[subset_of_data_indices]
 
-            feature_indices = set(np.random.choice(f, num_features, replace=False))
+            feature_indices = set(
+                np.random.choice(f, num_features, replace=False))
             tree = DecisionTree(
                 self.max_height,
                 feature_indices,

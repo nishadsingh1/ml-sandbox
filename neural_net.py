@@ -36,7 +36,12 @@ class NeuralNet(Model):
         O = softmax(S_out, np.sum(np.exp(S_out)))
         return S_hid, H, O
 
-    def train(self, X_train, Y_train, num_epochs=NUM_EPOCHS, init_learning_rate=INIT_LEARNING_RATE, gamma=GAMMA):
+    def train(self,
+              X_train,
+              Y_train,
+              num_epochs=NUM_EPOCHS,
+              init_learning_rate=INIT_LEARNING_RATE,
+              gamma=GAMMA):
         n, _ = X_train.shape
         ordering = range(n)
 

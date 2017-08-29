@@ -1,8 +1,10 @@
 from neural_net import NeuralNet
 from utils import *
 
+
 def pre_process(x):
     return add_column_of_ones(normalize(x))
+
 
 if __name__ == "__main__":
 
