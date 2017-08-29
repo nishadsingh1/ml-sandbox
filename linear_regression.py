@@ -4,7 +4,6 @@ from utils import *
 
 DEFAULT_REG = 2
 
-
 class LinearRegressionModel(Model):
     def __init__(self):
         self.model = None

@@ -1,36 +1,29 @@
 import numpy as np
 from utils import *
 from model import Model
+import random
 
 N_IN = 784
-N_HID = 50
+N_HID = 20
 N_OUT = 10
 SIGMA = 0.1
 GAMMA = 0.9
 INIT_LEARNING_RATE = 0.04
 NUM_EPOCHS = 4
-ITERATION_REPORT_DELAY = 100
 
 
 class NeuralNet(Model):
     """
-    Implements a Nueral Net with 1 hidden layer.
+    Implements a Nueral Net with 1 hidden layer with a relu activation function.
     The input layer has N_in nodes, the hidden layer has N_hid, and the output layer has N_out.
     """
 
     def __init__(self,
-                 iteration_report_delay=ITERATION_REPORT_DELAY,
                  sigma=SIGMA,
-                 init_learning_rate=INIT_LEARNING_RATE,
-                 gamma=GAMMA,
                  num_epochs=NUM_EPOCHS,
                  N_in=N_IN,
                  N_hid=N_HID,
                  N_out=N_OUT):
-        self.iteration_report_delay = iteration_report_delay
-        self.init_learning_rate = INIT_LEARNING_RATE
-        self.gamma = gamma
-        self.num_epochs = num_epochs
 
         self.W = sigma * np.random.randn(N_out, N_hid + 1)
         self.V = sigma * np.random.randn(N_hid, N_in + 1)
@@ -43,20 +36,13 @@ class NeuralNet(Model):
         O = softmax(S_out, np.sum(np.exp(S_out)))
         return S_hid, H, O
 
-    def train(self, X_train, Y_train, training_indices):
-        learning_rate = self.init_learning_rate
-        j = 0
-        iterations = []
-        losses = []
-        accuracies = []
-        for _ in range(self.num_epochs):
-            for i in training_indices:
-                if j % self.iteration_report_delay == 0:
-                    iterations.append(j)
-                    loss, accuracy = self.document_tl_and_classification_accuracy(
-                        X_train, Y_train, self.V, self.W, training_indices)
-                    losses.append(loss)
-                    accuracies.append(accuracy)
+    def train(self, X_train, Y_train, num_epochs=NUM_EPOCHS, init_learning_rate=INIT_LEARNING_RATE, gamma=GAMMA):
+        n, _ = X_train.shape
+        ordering = range(n)
+
+        for _ in range(num_epochs):
+            random.shuffle(ordering)
+            for i in ordering:
                 X = X_train[i]
                 Y = Y_train[i]
 
@@ -74,13 +60,13 @@ class NeuralNet(Model):
 
                 self.W = np.subtract(self.W, np.multiply(learning_rate, dJdW))
                 self.V = np.subtract(self.V, np.multiply(learning_rate, dJdV))
-                j += 1
-            learning_rate *= self.gamma
+            learning_rate *= gamma
 
-    def predict(self, X_processed, validation_indices):
+    def predict(self, X):
         predictions = []
-        for i in validation_indices:
-            X = X_processed[i]
-            S_hids, H, O = self.fwd_pass(X, self.V, self.W)
+        n, _ = X.shape
+        for i in range(n):
+            x = X[i]
+            S_hids, H, O = self.fwd_pass(x, self.V, self.W)
             predictions.append(np.argmax(O))
         return np.array(predictions)
