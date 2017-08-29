@@ -13,8 +13,7 @@ if __name__ == "__main__":
     print("Trained model")
 
     predictions_train = model.predict(X_train)
-    print("Reporting common splits on test data")
-    predictions_test = model.predict(X_test, report_common_splits=True)
+    predictions_test = model.predict(X_test)
 
     training_accuracy = get_frac_equal(predictions_train, labels_train)
     test_accuracy = get_frac_equal(predictions_test, labels_test)

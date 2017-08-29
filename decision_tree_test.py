@@ -12,10 +12,6 @@ if __name__ == "__main__":
     model.train(X_train, labels_train)
     print("Trained model")
 
-    rand_index = int(random.random() * X_test.shape[0])
-    print("Following the path of test datapoint {0}:".format(rand_index))
-    model.predict_and_print(X_test[rand_index])
-
     predictions_train = model.predict(X_train)
     predictions_test = model.predict(X_test)
 

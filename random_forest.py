@@ -44,7 +44,7 @@ class RandomForest(Model):
             tree.train(data_for_tree, labels_for_tree, max_label)
             self.trees.append(tree)
 
-    def predict(self, data, report_common_splits=False):
+    def predict(self, data):
         """
         Generates predictions for each input datapoint by argmaxing over the sum of the belief
         distributions over the true label reported by each of the Random Forests' trees.
@@ -53,8 +53,7 @@ class RandomForest(Model):
         """
         summed_distributions = None
         for tree in self.trees:
-            distribution = tree.predict_for_forest(data, report_common_splits,
-                                                   self.trees.index(tree))
+            distribution = tree.predict_for_forest(data)
             if summed_distributions is None:
                 summed_distributions = distribution
             else:
