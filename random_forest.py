@@ -5,8 +5,8 @@ from decision_tree import DecisionTree
 
 DEFAULT_FRACTION_FEATURES = 0.8
 DEFAULT_FRACTION_DATA = 0.9
-DEFAULT_NUM_TREES = 100
-DEFAULT_MAX_HEIGHT = 50
+DEFAULT_NUM_TREES = 5
+DEFAULT_MAX_HEIGHT = 15
 
 
 class RandomForest(Model):
@@ -35,7 +35,7 @@ class RandomForest(Model):
             data_for_tree, labels_for_tree = data[
                 subset_of_data_indices], labels[subset_of_data_indices]
 
-            feature_indices = np.random.choice(f, num_features, replace=False)
+            feature_indices = set(np.random.choice(f, num_features, replace=False))
             tree = DecisionTree(
                 self.max_height,
                 feature_indices,
@@ -47,6 +47,8 @@ class RandomForest(Model):
         """
         Generates predictions for each input datapoint by argmaxing over the sum of the belief
         distributions over the true label reported by each of the Random Forests' trees.
+
+        TODO: Parameterize the aggregation function and/or allow for feedback for tree weighting
         """
         summed_distributions = None
         for tree in self.trees:

@@ -3,7 +3,7 @@ from math import exp, log
 from model import Model
 
 DEFAULT_MAX_HEIGHT = 15
-MAX_NUM_THRESHOLDS = 60
+MAX_NUM_THRESHOLDS = 5
 
 class DecisionTree(Model):
     
@@ -14,7 +14,8 @@ class DecisionTree(Model):
         self.feature_indices = feature_indices # The subset of features to consider (only assigned when used in a Forest)
         self.possible_threshold_values = None # {threshold value 1 => [all but largest candidate threshold value for feature 1], ...}
         self.max_num_thresholds = max_num_thresholds
-        self.cat_feature_indices = cat_feature_indices # Indices of features that are categorial (as opposed to numerical)
+        self.cat_feature_indices = cat_feature_indices # Indices of features that are categorical (as opposed to numerical)
+        self.ignore_feature_indices = set()
         
     def impurity(self, left_label_hist, right_label_hist):
         """
@@ -44,14 +45,14 @@ class DecisionTree(Model):
         
         if self.feature_indices is None:
             # Either consider all features as candidates for the split rule
-            valid_features = range(num_features)
+            valid_features_indices = set(range(num_features)) - self.ignore_feature_indices
         else:
             # Or only the subset that's permitted by the owning Random Forest
-            valid_features = self.feature_indices
+            valid_features_indices = self.feature_indices - self.ignore_feature_indices
         
         # Consider all (candidate feature index, candidate threshold value) combinations for a split
         # and return the one with the lowest impurity
-        for feature_index in valid_features:
+        for feature_index in valid_features_indices:
             for threshold in self.possible_threshold_values[feature_index]:
                 is_categorical = feature_index in self.cat_feature_indices
                 candidate_split_rule = SplitRule(feature_index, threshold, is_categorical)
@@ -77,35 +78,44 @@ class DecisionTree(Model):
         of feature values and setting threshold values to minimize the expected variance in the
         corresponding buckets' counts.
         """
-        n, f = data.shape
+        _, f = data.shape
         self.possible_threshold_values = {}
+
         for i in range(f):
+            possible_threshold_values = []
             feature_is_numerical = i not in self.cat_feature_indices
 
             # Identify the unique values of this feature present in the data
             unique_threshold_values = set()
             for x in data:
                 unique_threshold_values.add(x[i])
+
+            # If there is only one unique value, splitting on this feature will never be useful
+            if len(unique_threshold_values) <= 1:
+                self.ignore_feature_indices.add(i)
+                continue
             
             # If we can afford to consider all unique values as candidate threshold values
             if len(unique_threshold_values) <= self.max_num_thresholds:
                 if feature_is_numerical:
                     unique_threshold_values.remove(max(unique_threshold_values))
-                self.possible_threshold_values[i] = list(unique_threshold_values)
+                possible_threshold_values = list(unique_threshold_values)
 
             # If there are more unique values to consider as candidate threshold values than allowed
-            else:  
+            else:
                 max_thresh, min_thresh = max(unique_threshold_values), min(unique_threshold_values)
 
                 # If the feature is numerical, evenly distribute the new candidate threshold values
                 # through feature's range of unique values
                 if feature_is_numerical:
                     increment = (max_thresh - min_thresh) / float(self.max_num_thresholds)
-                    self.possible_threshold_values[i] = \
-                        [min_thresh + i * increment for i in range(int(self.max_num_thresholds))]
+                    possible_threshold_values = \
+                        [min_thresh + j * increment for j in range(int(self.max_num_thresholds))]
                 else:
                     # Should randomly sample here instead
-                    self.possible_threshold_values[i] = list(unique_threshold_values)
+                    possible_threshold_values = list(unique_threshold_values)
+
+            self.possible_threshold_values[i] = possible_threshold_values
     
     def get_histograms(self, data, labels, split_rule):
         """
@@ -116,23 +126,22 @@ class DecisionTree(Model):
         The split is specified by the input feature index and threshold value.
         """
         
-        num_datapoints, _ = data.shape
-        assert labels.shape == (n, 1)
+        n, _ = data.shape
+        assert(labels.shape[0] == n)
         
         left_label_hist, right_label_hist = {}, {}
-        for data_index in range(num_datapoints):
-            datapoint_label = labels[data_index][0]
-            datapoint = data[data_index]
-            datapoint_feature_value = data[data_index][feature_index]
+        for i in range(n):
+            label = labels[i]
+            datapoint = data[i]
 
-            if split_rule.go_right(datapoint):
+            if split_rule.split_right(datapoint):
                 corresponding_dictionary = right_label_hist
             else:
                 corresponding_dictionary = left_label_hist
                     
-            if datapoint_label not in corresponding_dictionary:
-                corresponding_dictionary[datapoint_label] = 0
-            corresponding_dictionary[datapoint_label] += 1
+            if label not in corresponding_dictionary:
+                corresponding_dictionary[label] = 0
+            corresponding_dictionary[label] += 1
             
         return left_label_hist, right_label_hist
     
@@ -187,8 +196,7 @@ class DecisionTree(Model):
         
         max_count = 0.0
         mode_label = None
-        for label in labels:
-            l = label[0]
+        for l in labels:
             counts[l] += 1.0
             if counts[l] > max_count:
                 max_count = counts[l]
@@ -201,9 +209,7 @@ class DecisionTree(Model):
         Separates datapoints (and corresponding labels) into right and left buckets
         by evaluating them with the split rule.
         """
-        n, f = data.shape
-        assert labels.shape == (n, 1)
-        
+        n, _ = data.shape
         left_indices, right_indices = [], []
         
         for data_index in range(n):
@@ -244,14 +250,14 @@ class DecisionTree(Model):
         node = self.root_node
         while not node.is_leaf_node():
             split_rule = node.split_rule
-            feauture_index = split_rule.feature_index
+            feature_index = split_rule.feature_index
             threshold = split_rule.threshold
 
             if split_rule.split_right(d):
-                operator = " = " if node.is_categorical else " > "
+                operator = " = " if split_rule.is_categorical else " > "
                 node = node.right
             else:
-                operator = " != " if node.is_categorical else " <= "
+                operator = " != " if split_rule.is_categorical else " <= "
                 node = node.left
             print(str("Feature #" + str(feature_index) + operator + str(threshold)))
         return node.label
@@ -286,7 +292,7 @@ class DecisionTree(Model):
             split_rule = self.root_node.split_rule
             passed = num_pass > len(data) - num_pass
 
-            if split_rule.is_categorial:
+            if split_rule.is_categorical:
                 operator = "=" if passed else "!="
             else:
                 operator = ">" if passed else "<="
@@ -309,10 +315,10 @@ class TreeNode:
         return self.label is not None
 
 class SplitRule:
-    def __init__(self, feature_index, threshold, is_categorial=False):
+    def __init__(self, feature_index, threshold, is_categorical=False):
         self.feature_index = feature_index
         self.threshold = threshold
-        self.is_categorial = is_categorial # True iff this node's split rule is on a categorical feature
+        self.is_categorical = is_categorical # True iff this node's split rule is on a categorical feature
 
     def split_right(self, datapoint):
         """
